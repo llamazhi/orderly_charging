@@ -2,6 +2,7 @@
  * power load capacity
  * 此 Class 致力于模拟无序充电如何影响一个居民小区的电力负荷 */
 
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,8 +19,6 @@ public class NormalCharging {
     private Map<String, int[]> EVModelsData;
     private String[] EVModels;
     private Random generator = new Random();
-    //    private List<EVData> EVDatabase;
-    //    private List<String[]> timeToPower;
     private double marketPermeability;
     private int totalVehicleNumber;
     private List<List<String[]>> timeToPowerList;
@@ -57,19 +56,17 @@ public class NormalCharging {
 
     public List<String[]> simulateDailyTravelDistance() {
         double alphaWork = 1.20; // 工作日尺度参数
-        double lambdaWork = 3.83e-2; // 工作日形状参数
-//        double alphaWeekend = 1.25; // 非工作日尺度参数
-//        double lambdaWeekend = 3.12e-2; // 非工作日形状参数
+        double lambdaWork = 0.0383; // 工作日形状参数
 
-        double constantWork = Math.pow(lambdaWork, alphaWork) / Gamma.gamma(alphaWork) *
+        double constantWork = (Math.pow(lambdaWork, alphaWork) / Gamma.gamma(alphaWork)) *
                 Math.pow(lambdaWork, alphaWork - 1);
 
         // generate n samples
         List<String[]> res = new ArrayList<>();
 
         for (int i = 1; i <= 120; i++) {
-//            int dist = this.generator.nextInt(121); // max distance set to be 120km for now
             double prob = constantWork * Math.exp(-1 * lambdaWork * i);
+//            logger.info("prob: " + prob);
             res.add(new String[]{String.valueOf(i), String.valueOf(prob)});
         }
         return res;
@@ -81,8 +78,6 @@ public class NormalCharging {
     // return: SOC and distribution
     public List<String[]> simulateSOCDistribution(List<String[]> data) {
         int maxTravelDistance = 200;
-        int n = data.size();
-        Map<Double, Integer> map = new HashMap<>();
         List<String[]> SOCDistribution = new ArrayList<>();
 
         for (String[] datum : data) {
@@ -167,13 +162,48 @@ public class NormalCharging {
 
     // return: the item corresponding to its probability density
     // 返回： 对应其概率密度的值
-    public String findItemFromProb(List<String[]> distribution, double tol, double prob) {
-//        logger.info("curr prob1: " + prob);
-        for (String[] items : distribution) {
-//            logger.info("current diff: " + (Math.abs(prob - Double.parseDouble(items[1]))));
-//            logger.info("curr prob2: " + items[1]);
-            if (Math.abs(prob - Double.parseDouble(items[1])) <= tol) {
-                return items[0];
+//    public String findItemFromProb(List<String[]> distribution, double tol, double prob) {
+//        for (String[] items : distribution) {
+//            if (Math.abs(prob - Double.parseDouble(items[1])) <= tol) {
+//                return items[0];
+//            }
+//        }
+//        return "";
+
+    public double findMaxCumulativeProb(List<String[]> mapping) {
+        double cumulativeProb = 0;
+        for (String[] data : mapping) {
+            double currProb = Double.parseDouble(data[1]);
+            cumulativeProb += currProb;
+        }
+        return cumulativeProb;
+    }
+
+    // return: the item corresponding to its probability density
+    // 返回： 对应其概率密度的值
+    public String findItemFromProb(List<String[]> mapping, double prob) {
+        Map<Double, String> map = new HashMap<>();
+        List<double[]> intervals = new ArrayList<>();
+
+        int size = mapping.size();
+        double cdf = Double.parseDouble(mapping.get(0)[1]);
+        map.put(cdf, mapping.get(0)[1]);
+        intervals.add(new double[]{0, cdf});
+
+        for (int i = 1; i < size; i++) {
+            double curr = Double.parseDouble(mapping.get(i)[1]);
+            intervals.add(new double[]{cdf, cdf + curr});
+            cdf += curr;
+            map.put(cdf, mapping.get(i)[0]);
+        }
+//        logger.info("total prob: " + cdf);
+
+        for (double[] interval : intervals) {
+//            logger.info("interval start: " + interval[0]);
+//            logger.info("interval end: " + interval[1]);
+//            logger.info("prob: " + prob);
+            if (prob >= interval[0] && prob <= interval[1]) {
+                return map.get(interval[1]);
             }
         }
         return "";
@@ -213,20 +243,28 @@ public class NormalCharging {
         // generate n samples
         for (int i = 0; i < EVNumber; i++) {
             EVData ev = new EVData(EVModels[i]);
-            double prob = this.generator.nextDouble() * 0.011;
-            double tol = 1e-3;
-            double lastSOC = Double.parseDouble(this.findItemFromProb(SOCDistribution, tol, prob));
+
+            // 生成随机SOC
+            double maxProb = this.findMaxCumulativeProb(SOCDistribution);
+//            logger.info("maxProb: " + maxProb);
+            double prob = this.generator.nextDouble() * maxProb;
+            double lastSOC = Double.parseDouble(this.findItemFromProb(SOCDistribution, prob));
             ev.setRemainingSOC(lastSOC);
 
             int[] probBox = new int[]{0, 0, 1}; // 假设2/3的人会用慢充
             int ifUseFastCharging = probBox[generator.nextInt(3)];
 
-            prob = this.generator.nextDouble() * 0.205;
-            tol = 0.03;
-
-            double retTime = Double.parseDouble(this.findItemFromProb(returningTime, tol, prob));
+            // 生成随机返回时间
+            maxProb = this.findMaxCumulativeProb(returningTime);
+            prob = this.generator.nextDouble() * maxProb;
+            double retTime = Double.parseDouble(this.findItemFromProb(returningTime, prob));
+//            logger.info("retTime: " + retTime);
             ev.setReturningTime(retTime);
-            double leavTime = Double.parseDouble(this.findItemFromProb(leavingTime, tol, prob));
+
+            // 生成随机离开时间
+            maxProb = this.findMaxCumulativeProb(leavingTime);
+            prob = this.generator.nextDouble() * maxProb;
+            double leavTime = Double.parseDouble(this.findItemFromProb(leavingTime, prob));
             double stayTime = leavTime + 12 - retTime;
 
             int[] EVparams = this.EVModelsData.get(ev.getModelName());
@@ -245,21 +283,18 @@ public class NormalCharging {
             EVDatabase.add(ev);
         }
 
-        // 计算每个时段需要的充电电量负荷
+        // 计算每个时段需要的充电负荷
         List<String[]> timeToPower = new ArrayList<>();
         for (double time = 0; time < 24; time += 0.25) {
             double currPower = 0;
             for (EVData ev : EVDatabase) {
-//                logger.info("charging time ends at: " + ev.getChargingEndTime());
                 if (time >= ev.getReturningTime() && time <= ev.getChargingEndTime()) {
                     String modelName = ev.getModelName();
                     currPower += this.EVModelsData.get(modelName)[ev.getUseFastCharging()];
                 }
             }
-//            logger.info("currPower: " + currPower);
             timeToPower.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
         }
-//        this.timeToPowerList.add(timeToPower);
         return timeToPower;
     }
 
@@ -271,7 +306,7 @@ public class NormalCharging {
 //                new String[]{"Distance", "Distribution"});
 //        logger.info("Daily travel distance data has been written");
 //        logger.info("日里程数据已被导出");
-//
+////
 //        List<String[]> SOCDistributionData = nc.simulateSOCDistribution(travelDistanceData);
 //        writeToNewCSV("./src/data/lastSOCDistribution.csv", SOCDistributionData,
 //                new String[]{"SOC", "Probability"});
@@ -297,11 +332,9 @@ public class NormalCharging {
         double[] powerAvg = new double[96];
 
         for (int i = 0; i < loop; i++) {
-//            logger.info("loop: " + i);
             List<String[]> timeToPower = nc.simulateMonteCarlo();
             for (int j = 0; j < powerAvg.length; j++) {
                 double power = Double.parseDouble(timeToPower.get(j)[1]);
-//                logger.info("power: " + power);
                 powerAvg[j] += Double.parseDouble(timeToPower.get(j)[1]);
             }
         }
