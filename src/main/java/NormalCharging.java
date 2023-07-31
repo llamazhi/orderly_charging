@@ -18,10 +18,11 @@ public class NormalCharging {
     private Map<String, int[]> EVModelsData;
     private String[] EVModels;
     private Random generator = new Random();
-    private List<EVData> EVDatabase;
-    private List<String[]> timeToPower;
+    //    private List<EVData> EVDatabase;
+    //    private List<String[]> timeToPower;
     private double marketPermeability;
     private int totalVehicleNumber;
+    private List<List<String[]>> timeToPowerList;
 
     // Initialize
     public NormalCharging() {
@@ -41,10 +42,9 @@ public class NormalCharging {
         for (int i = 0; i < 5; i++) {
             EVModelsData.put(EVModels[i], chargingSpec.get(i));
         }
-        this.EVDatabase = new ArrayList<>();
-        this.timeToPower = new ArrayList<>();
         this.marketPermeability = 0.3;
         this.totalVehicleNumber = 400;
+        this.timeToPowerList = new ArrayList<>();
     }
 
     /* Section to build probability models
@@ -100,7 +100,6 @@ public class NormalCharging {
 
         double constantWork = Math.pow(lambdaWork, alphaWork) / Gamma.gamma(alphaWork);
 
-//        int n = 400; // test number
         List<String[]> res = new ArrayList<>();
 
         for (double t = 3; t <= 26; t += 0.25) {
@@ -191,7 +190,7 @@ public class NormalCharging {
      * power for each vehicle
      * 目标：用求 Pevi 和的公式来计算总充电功率，Pevi 为每辆电动汽车的充电功率 */
 
-    public void simulateMonteCarlo() {
+    public List<String[]> simulateMonteCarlo() {
         // Assume each EV owner needs at least 8, at most 14 hours to be home
         // 假设每个车主至少需要8小时，至多需要14小时在家休息
 
@@ -202,23 +201,18 @@ public class NormalCharging {
         // calculate its time to stay at home
         // generate EV type
         // calculate Charging Power for each 15 min
+        this.generator.setSeed(System.nanoTime());
         int EVNumber = (int) Math.round(this.totalVehicleNumber * this.marketPermeability);
         List<String[]> travelDistances = this.simulateDailyTravelDistance();
         List<String[]> SOCDistribution = this.simulateSOCDistribution(travelDistances);
         List<String[]> returningTime = this.simulateReturningTime();
         List<String[]> leavingTime = this.simulateLeavingTime();
         String[] EVModels = this.simulateVehicleTypeDistribution(EVNumber);
-
-//        List<EVData> EVDatabase = new ArrayList<>();
+        List<EVData> EVDatabase = new ArrayList<>();
 
         // generate n samples
         for (int i = 0; i < EVNumber; i++) {
-//            if (i % 10 == 0) {
-//                logger.info("In the " + i + " loop");
-//                logger.info("进行到第 " + i + " 循环");
-//            }
             EVData ev = new EVData(EVModels[i]);
-
             double prob = this.generator.nextDouble() * 0.011;
             double tol = 1e-3;
             double lastSOC = Double.parseDouble(this.findItemFromProb(SOCDistribution, tol, prob));
@@ -238,8 +232,6 @@ public class NormalCharging {
             int[] EVparams = this.EVModelsData.get(ev.getModelName());
             double maxCharge = EVparams[2];
             double chargeTime = (maxCharge * (1 - ev.getRemainingSOC() / 100)) / EVparams[ifUseFastCharging];
-//            logger.info("curr SOC: " + ev.getRemainingSOC());
-//            logger.info("chargeTime: " + chargeTime);
 
             // 如果车户离开前还未充满电，假设车户选择停止充电
             if (chargeTime <= stayTime) {
@@ -250,27 +242,29 @@ public class NormalCharging {
             }
 
             ev.setChargingEndTime((ev.getReturningTime() + ev.getChargingTime()));
-            this.EVDatabase.add(ev);
+            EVDatabase.add(ev);
         }
-    }
 
-    // Final step to calculate the total power usage of the residential community
-    // 最后一步要计算小区的总使用功率
-    public void calculateTotalPowerUsage() {
+        // 计算每个时段需要的充电电量负荷
+        List<String[]> timeToPower = new ArrayList<>();
         for (double time = 0; time < 24; time += 0.25) {
             double currPower = 0;
-            for (EVData ev : this.EVDatabase) {
+            for (EVData ev : EVDatabase) {
 //                logger.info("charging time ends at: " + ev.getChargingEndTime());
                 if (time >= ev.getReturningTime() && time <= ev.getChargingEndTime()) {
                     String modelName = ev.getModelName();
                     currPower += this.EVModelsData.get(modelName)[ev.getUseFastCharging()];
                 }
             }
-            this.timeToPower.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
+//            logger.info("currPower: " + currPower);
+            timeToPower.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
         }
+//        this.timeToPowerList.add(timeToPower);
+        return timeToPower;
     }
 
     public static void main(String[] args) throws IOException {
+        long startTime = System.nanoTime();
         NormalCharging nc = new NormalCharging();
 //        List<String[]> travelDistanceData = nc.simulateDailyTravelDistance();
 //        writeToNewCSV("./src/data/dailyTravelDistances.csv", travelDistanceData,
@@ -296,10 +290,39 @@ public class NormalCharging {
 //        logger.info("Leaving time distribution data has been written");
 //        logger.info("车辆出发时刻分布数据已被导出");
 
-        nc.simulateMonteCarlo();
-        nc.calculateTotalPowerUsage();
-        writeToNewCSV("./src/data/timeSlotWithPower.csv", nc.timeToPower, new String[]{"Time", "Power"});
-        logger.info("Time slots with power usage data has been written");
-        logger.info("时间格与其对应电力负荷数据已被导出");
+//        nc.simulateMonteCarlo();
+//        List<String[]> timeToPower = nc.calculateTotalPowerUsage();
+
+        int loop = 1000;
+        double[] powerAvg = new double[96];
+
+        for (int i = 0; i < loop; i++) {
+//            logger.info("loop: " + i);
+            List<String[]> timeToPower = nc.simulateMonteCarlo();
+            for (int j = 0; j < powerAvg.length; j++) {
+                double power = Double.parseDouble(timeToPower.get(j)[1]);
+//                logger.info("power: " + power);
+                powerAvg[j] += Double.parseDouble(timeToPower.get(j)[1]);
+            }
+        }
+
+        for (int i = 0; i < 96; i++) {
+            powerAvg[i] /= loop;
+        }
+
+        List<String[]> avgTimeToPower = new ArrayList<>();
+        for (double t = 0; t < 24; t += 0.25) {
+            avgTimeToPower.add(new String[]{String.valueOf(t), String.valueOf(powerAvg[(int) t * 4])});
+        }
+//        writeToNewCSV("./src/data/timeSlotWithPower.csv", timeToPower, new String[]{"Time", "Power"});
+//        logger.info("Time slots with power usage data has been written");
+//        logger.info("时间格与其对应电力负荷数据已被导出");
+
+        writeToNewCSV("./src/data/averageTimeSlotWithPower.csv", avgTimeToPower, new String[]{"Time", "Power"});
+        logger.info("Average time slots with power usage data has been written");
+        logger.info("平均时间格与其对应电力负荷数据已被导出");
+        long endTime = System.nanoTime();
+        long totalTime = (endTime - startTime) / 1000000;
+        logger.info("Total execution time: " + totalTime + " ms");
     }
 }
