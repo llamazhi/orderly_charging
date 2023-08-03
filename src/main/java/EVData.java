@@ -8,6 +8,10 @@ public class EVData {
     private int useFastCharging;
     private String modelName;
 
+    private double chargingPower;
+
+    private double maxSOC;
+
     public EVData(String modelName) {
         this.modelName = modelName;
     }
@@ -66,5 +70,21 @@ public class EVData {
 
     public void setModelName(String modelName) {
         this.modelName = modelName;
+    }
+
+    public double getChargingPower() {
+        return chargingPower;
+    }
+
+    public void setChargingPower(double chargingPower) {
+        this.chargingPower = chargingPower;
+    }
+
+    public double getMaxSOC() {
+        return maxSOC;
+    }
+
+    public void setMaxSOC(double maxSOC) {
+        this.maxSOC = maxSOC;
     }
 }
