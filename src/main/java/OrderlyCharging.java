@@ -18,6 +18,7 @@ import java.util.*;
 public class OrderlyCharging extends NormalCharging {
     private static final Logger logger = LogManager.getLogger(OrderlyCharging.class);
     private final Utils utils;
+    private List<EVData> EVDatabase;
 
     // initialize with EV specs
     // 初始化电动汽车参数
@@ -28,6 +29,7 @@ public class OrderlyCharging extends NormalCharging {
         this.setMarketPermeability(0.3);
         this.setTotalVehicleNumber(400);
         this.utils = new Utils();
+        this.EVDatabase = new ArrayList<>();
     }
 
     public void exportTimeSlotData() {
@@ -60,10 +62,11 @@ public class OrderlyCharging extends NormalCharging {
             String chargingPower = String.valueOf(ev.getChargingPower());
             String returningTime = this.utils.limitToThreeDecimal(ev.getReturningTime());
             String leavingTime = this.utils.limitToThreeDecimal(ev.getLeavingTime());
-            EVList.add(new String[]{maxSOC, remainingSOC, chargingPower, returningTime, leavingTime});
+            String chargingTime = this.utils.limitToThreeDecimal(ev.getChargingTime());
+            EVList.add(new String[]{maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime});
         }
         this.utils.writeToNewCSV("./src/data/EVDatabase.csv", EVList,
-                new String[]{"Max_SOC, Remaining_SOC, Charging_Power", "Returning_Time", "Leaving_Time"});
+                new String[]{"Max_SOC, Remaining_SOC, Charging_Power", "Returning_Time", "Leaving_Time", "Charging_Time"});
     }
 
     public static void main(String[] args) {
