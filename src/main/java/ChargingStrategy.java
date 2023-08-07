@@ -54,7 +54,6 @@ public class ChargingStrategy extends AbstractProblem {
         List<String[]> EVData = this.getEVDataBase();
         int timeNum = this.getNTimeSlots();
         double[] constraints = new double[this.getNEVs() + this.getNTimeSlots()];
-//        double constraint = 0.0;
 
         double price = 0.0;
         double dailyLoadVariance = 0.0;
@@ -237,36 +236,36 @@ public class ChargingStrategy extends AbstractProblem {
 
     public static void main(String[] args) {
         long startTime = System.nanoTime();
-        NondominatedPopulation result = new Executor()
-                .withProblemClass(ChargingStrategy.class, "./src/data/timeToAllParams.csv",
-                        "./src/data/EVDatabase.csv", 120, 96)
-                .withAlgorithm("OMOPSO")
-                .withMaxEvaluations(100000)
-                .distributeOnAllCores()
-                .run();
+//        NondominatedPopulation result = new Executor()
+//                .withProblemClass(ChargingStrategy.class, "./src/data/timeToAllParams.csv",
+//                        "./src/data/EVDatabase.csv", 120, 96)
+//                .withAlgorithm("OMOPSO")
+//                .withMaxEvaluations(100000)
+//                .distributeOnAllCores()
+//                .run();
+//
+////        for (int i = 0; i < result.size(); i++) {
+//        Solution solution = result.get(0);
+//        double[] objectives = solution.getObjectives();
+//        double[] vars = new double[solution.getNumberOfVariables()];
+//        double[] solutions = EncodingUtils.getReal(solution);
+//        for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+//            vars[i] = solutions[i];
+//        }
+//        List<String[]> solutionList = new ArrayList<>();
+//        for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+//            solutionList.add(new String[]{String.valueOf(i), String.valueOf(vars[i])});
+//        }
+//        Utils utils = new Utils();
+//        utils.writeToNewCSV("./src/data/SolutionList.csv", solutionList, new String[]{"Index",
+//                "Charging_Starting_Time"});
 
-//        for (int i = 0; i < result.size(); i++) {
-        Solution solution = result.get(0);
-        double[] objectives = solution.getObjectives();
-        double[] vars = new double[solution.getNumberOfVariables()];
-        double[] solutions = EncodingUtils.getReal(solution);
-        for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-            vars[i] = solutions[i];
-        }
-        List<String[]> solutionList = new ArrayList<>();
-        for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-            solutionList.add(new String[]{String.valueOf(i), String.valueOf(vars[i])});
-        }
-        Utils utils = new Utils();
-        utils.writeToNewCSV("./src/data/SolutionList.csv", solutionList, new String[]{"Index",
-                "Charging_Starting_Time"});
-
-        logger.info("Solution " + 0 + ": ");
-        logger.info("Min user charging fee: " + objectives[0]);
-        logger.info("Min daily load variance: " + objectives[1]);
-        long endTime = System.nanoTime();
-        long elapsedTime = (endTime - startTime) / 1000000;
-        logger.info("elapsed time: " + elapsedTime + "ms");
+//        logger.info("Solution " + 0 + ": ");
+//        logger.info("Min user charging fee: " + objectives[0]);
+//        logger.info("Min daily load variance: " + objectives[1]);
+//        long endTime = System.nanoTime();
+//        long elapsedTime = (endTime - startTime) / 1000000;
+//        logger.info("elapsed time: " + elapsedTime + "ms");
 //        }
     }
 }

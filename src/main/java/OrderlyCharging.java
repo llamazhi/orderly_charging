@@ -4,14 +4,11 @@
  *  同时，我们将从 NormalCharging 继承共有的参数
  */
 
-import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.io.*;
-import java.io.IOException;
-
-import com.opencsv.*;
+import org.moeaframework.Executor;
+import org.moeaframework.core.*;
+import org.moeaframework.core.variable.EncodingUtils;
 
 import java.util.*;
 
@@ -19,6 +16,8 @@ public class OrderlyCharging extends NormalCharging {
     private static final Logger logger = LogManager.getLogger(OrderlyCharging.class);
     private final Utils utils;
     private List<EVData> EVDatabase;
+    private List<String[]> timeToDailyLoad;
+    private List<String[]> timeToChargingPower;
 
     // initialize with EV specs
     // 初始化电动汽车参数
@@ -30,6 +29,8 @@ public class OrderlyCharging extends NormalCharging {
         this.setTotalVehicleNumber(400);
         this.utils = new Utils();
         this.EVDatabase = new ArrayList<>();
+//        this.timeToDailyLoad = new ArrayList<>();
+//        this.timeToChargingPower = new ArrayList<>();
     }
 
     public void exportTimeSlotData() {
@@ -38,20 +39,22 @@ public class OrderlyCharging extends NormalCharging {
         List<String[]> timeToDailyLoad = this.simulateResidentialDailyPowerLoad();
 
         // 将所有参数统一放到一个表内
-        List<String[]> timeToAllParams = new ArrayList<>();
+        List<String[]> timeToDaily = new ArrayList<>();
         for (int i = 0; i < 96; i++) {
             String time = timeToAvgChargingPower.get(i)[0];
             String dailyLoad = timeToDailyLoad.get(i)[1];
             String[] params = new String[]{time, dailyLoad};
-            timeToAllParams.add(params);
+            timeToDaily.add(params);
         }
-
-        this.utils.writeToNewCSV("./src/data/timeToAllParams.csv", timeToAllParams,
+        this.timeToDailyLoad = timeToDailyLoad;
+        this.timeToChargingPower = timeToAvgChargingPower;
+        this.utils.writeToNewCSV("./src/data/timeToAllParams.csv", timeToDaily,
                 new String[]{"Time", "Daily_Load"});
     }
 
     public void exportEVData() {
-        List<EVData> EVDatabase = this.simulateEVDatabase();
+//        List<EVData> EVDatabase = this.simulateEVDatabase();
+        this.EVDatabase = this.simulateEVDatabase();
         List<String[]> EVList = new ArrayList<>();
 
 //        int count = 0;
@@ -69,11 +72,57 @@ public class OrderlyCharging extends NormalCharging {
                 new String[]{"Max_SOC, Remaining_SOC, Charging_Power", "Returning_Time", "Leaving_Time", "Charging_Time"});
     }
 
+    public void updateOptimizedSolution() {
+        NondominatedPopulation result = new Executor()
+                .withProblemClass(ChargingStrategy.class, "./src/data/timeToAllParams.csv",
+                        "./src/data/EVDatabase.csv", 120, 96)
+                .withAlgorithm("OMOPSO")
+                .withMaxEvaluations(100000)
+                .distributeOnAllCores()
+                .run();
+
+        Solution solution = result.get(0);
+        double[] solutions = EncodingUtils.getReal(solution);
+
+        this.timeToChargingPower = new ArrayList<>();
+        for (double time = 0; time < 24; time += 0.25) {
+            double currPower = 0;
+            for (int j = 0; j < this.EVDatabase.size(); j++) {
+                EVData ev = this.EVDatabase.get(j);
+                double newEndTime = solutions[j] + ev.getChargingTime();
+                if (newEndTime > 24) {
+                    newEndTime -= 24;
+                }
+                if (time >= solutions[j] && time <= newEndTime) {
+                    currPower += ev.getChargingPower();
+                }
+            }
+            this.timeToChargingPower.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
+        }
+        this.utils.writeToNewCSV("./src/data/updatedTimeToPower.csv", this.timeToChargingPower,
+                new String[]{"Time", "Charging_Power"});
+    }
+
+    public void exportTimeToTotalLoad(String title) {
+        List<String[]> totalLoad = new ArrayList<>();
+        for (int i = 0; i < this.timeToDailyLoad.size(); i++) {
+            double daily = Double.parseDouble(this.timeToDailyLoad.get(i)[1]);
+            double charging = Double.parseDouble(this.timeToChargingPower.get(i)[1]);
+            String total = String.valueOf(this.utils.limitToThreeDecimal(daily + charging));
+            totalLoad.add(new String[]{timeToDailyLoad.get(i)[0], total});
+        }
+        this.utils.writeToNewCSV(title, totalLoad,
+                new String[]{"Time", "Total_Load"});
+    }
+
     public static void main(String[] args) {
         long startTime = System.nanoTime();
         OrderlyCharging oc = new OrderlyCharging();
         oc.exportEVData();
         oc.exportTimeSlotData();
+        oc.exportTimeToTotalLoad("./src/data/oldTimeToTotalLoad.csv");
+        oc.updateOptimizedSolution();
+        oc.exportTimeToTotalLoad("./src/data/newTimeToTotalLoad.csv");
         long endTime = System.nanoTime();
         long elapsedTime = (endTime - startTime) / 1000000;
         logger.info("elapsed time: " + elapsedTime + "ms");

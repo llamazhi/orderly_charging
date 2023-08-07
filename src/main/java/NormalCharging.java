@@ -224,7 +224,7 @@ public class NormalCharging {
             double lastSOC = Double.parseDouble(this.findItemFromProb(SOCDistribution, prob));
             ev.setRemainingSOC(lastSOC);
 
-            int[] probBox = new int[]{0, 0, 1}; // 假设2/3的人会用慢充
+            int[] probBox = new int[]{0, 0, 0, 0, 1}; // 假设4/5的人会用慢充
             int ifUseFastCharging = probBox[generator.nextInt(3)];
 
             // 生成随机返回时间
