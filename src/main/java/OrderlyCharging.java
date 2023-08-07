@@ -72,7 +72,7 @@ public class OrderlyCharging extends NormalCharging {
                 new String[]{"Max_SOC, Remaining_SOC, Charging_Power", "Returning_Time", "Leaving_Time", "Charging_Time"});
     }
 
-    public void updateOptimizedSolution() {
+    public double[] updateOptimizedSolution() {
         NondominatedPopulation result = new Executor()
                 .withProblemClass(ChargingStrategy.class, "./src/data/timeToAllParams.csv",
                         "./src/data/EVDatabase.csv", 120, 96)
@@ -101,6 +101,7 @@ public class OrderlyCharging extends NormalCharging {
         }
         this.utils.writeToNewCSV("./src/data/updatedTimeToPower.csv", this.timeToChargingPower,
                 new String[]{"Time", "Charging_Power"});
+        return solutions;
     }
 
     public void exportTimeToTotalLoad(String title) {
@@ -114,7 +115,7 @@ public class OrderlyCharging extends NormalCharging {
         this.utils.writeToNewCSV(title, totalLoad,
                 new String[]{"Time", "Total_Load"});
     }
-
+    
     public static void main(String[] args) {
         long startTime = System.nanoTime();
         OrderlyCharging oc = new OrderlyCharging();
@@ -123,6 +124,9 @@ public class OrderlyCharging extends NormalCharging {
         oc.exportTimeToTotalLoad("./src/data/oldTimeToTotalLoad.csv");
         oc.updateOptimizedSolution();
         oc.exportTimeToTotalLoad("./src/data/newTimeToTotalLoad.csv");
+        double newPeakValleyDiffRate = oc.calculatePeakValleyRate(oc.timeToChargingPower, oc.timeToDailyLoad);
+
+        logger.info("新峰谷差率为: " + newPeakValleyDiffRate);
         long endTime = System.nanoTime();
         long elapsedTime = (endTime - startTime) / 1000000;
         logger.info("elapsed time: " + elapsedTime + "ms");
