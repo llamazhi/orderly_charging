@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!--配置环境信息===就是配置连接数据库的参数
+    default：指定配置的环境信息的id，表示默认连接该环境
+    -->
+    <environments default="postgresql">
+        <environment id="postgresql">
+            <!--配置事务的处理方式：模式使用JDBC的事务处理-->
+            <transactionManager type="jdbc"></transactionManager>
+            <!--数据源的默认type设置为pooled，表示使用连接池-->
+            <dataSource type="pooled">
+                <property name="driver" value="org.postgresql.Driver"/>
+                <property name="url" value="jdbc:postgresql://10.32.233.10:5433/ami_camel10_temp"/>
+                <property name="username" value="empower"/>
+                <property name="password" value="empower"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <!--加载mapper配置文件-->
+    <mappers>
+        <mapper resource="UserTestMapper.xml" />
+        <mapper resource="DailyTravelDistanceMapper.xml" />
+        <mapper resource="EVTimeComparisonMapper.xml" />
+        <mapper resource="LoadComparisonMapper.xml" />
+    </mappers>
+</configuration>

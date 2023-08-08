@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace是映射的dao接口-->
+<mapper namespace="com.example.charging.mapper.DailyTravelDistanceMapper">
+
+    <insert id="add" parameterType="com.example.charging.entity.DailyTravelDistance">
+        insert into daily_travel_distance(id, distance) values(#{id},#{distance})
+    </insert>
+    <select id="selectById" resultType="com.example.charging.entity.DailyTravelDistance">
+        select * from daily_travel_distance where id = #{id}
+    </select>
+
+</mapper>

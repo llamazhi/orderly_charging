@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace是映射的dao接口-->
+<mapper namespace="com.example.charging.mapper.LoadComparisonMapper">
+    <select id="selectAll" resultType="com.example.charging.entity.LoadComparison">
+        select * from load_comparison_table;
+    </select>
+
+    <select id="selectById" parameterType="string" resultType="com.example.charging.entity.LoadComparison">
+        select * from load_comparison_table where id = #{id}
+    </select>
+
+    <insert id="add" parameterType="com.example.charging.entity.LoadComparison">
+        insert into load_comparison_table(id, time, old_load, new_load) values(#{id},#{time}, #{oldLoad}, #{newLoad})
+    </insert>
+
+    <delete id="del" parameterType="int">
+        delete from load_comparison_table where id = #{id}
+    </delete>
+
+</mapper>

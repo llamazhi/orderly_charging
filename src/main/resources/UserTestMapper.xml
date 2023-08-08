@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace是映射的dao接口-->
+<mapper namespace="com.example.charging.mapper.UserTestMapper">
+    <select id="selectAll" resultType="com.example.charging.entity.UserEntity">
+        select * from test_table;
+    </select>
+
+    <select id="selectById" parameterType="int" resultType="com.example.charging.entity.UserEntity">
+        select * from emp where id = #{id}
+    </select>
+
+    <insert id="add" parameterType="com.example.charging.entity.UserEntity">
+        insert into test_table(id, name) values(#{id},#{name})
+    </insert>
+
+    <delete id="del" parameterType="int">
+        delete from emp where id = #{id}
+    </delete>
+
+</mapper>

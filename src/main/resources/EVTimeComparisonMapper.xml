@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace是映射的dao接口-->
+<mapper namespace="com.example.charging.mapper.EVTimeComparisonMapper">
+    <select id="selectAll" resultType="com.example.charging.entity.EVTimeComparison">
+        select * from ev_time_comparison_table;
+    </select>
+
+    <select id="selectById" parameterType="string" resultType="com.example.charging.entity.EVTimeComparison">
+        select * from ev_time_comparison_table where id = #{id}
+    </select>
+
+    <insert id="add" parameterType="com.example.charging.entity.EVTimeComparison">
+        insert into ev_time_comparison_table(id, old_start_time, old_end_time, new_start_time, new_end_time)
+        values(#{id},#{oldStartTime}, #{oldEndTime}, #{newStartTime}, #{newEndTime})
+    </insert>
+
+    <delete id="del" parameterType="int">
+        delete from ev_time_comparison_table where id = #{id}
+    </delete>
+
+</mapper>
