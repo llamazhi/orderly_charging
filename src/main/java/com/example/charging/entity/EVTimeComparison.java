@@ -3,18 +3,18 @@ package com.example.charging.entity;
 import java.math.BigDecimal;
 
 public class EVTimeComparison {
-    private String id;
+    private String uid;
     private BigDecimal oldStartTime;
     private BigDecimal oldEndTime;
     private BigDecimal newStartTime;
     private BigDecimal newEndTime;
 
-    public String getId() {
-        return id;
+    public String getUid() {
+        return uid;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public BigDecimal getOldStartTime() {
@@ -54,7 +54,7 @@ public class EVTimeComparison {
     @Override
     public String toString() {
         return "AlgorithmComparison{" +
-                "id='" + id + '\'' +
+                "id='" + uid + '\'' +
                 ", oldStartTime=" + oldStartTime +
                 ", oldEndTime=" + oldEndTime +
                 ", newStartTime=" + newStartTime +

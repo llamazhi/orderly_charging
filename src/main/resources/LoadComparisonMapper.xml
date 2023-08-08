@@ -13,7 +13,7 @@
     </select>
 
     <insert id="add" parameterType="com.example.charging.entity.LoadComparison">
-        insert into load_comparison_table(id, time, old_load, new_load) values(#{id},#{time}, #{oldLoad}, #{newLoad})
+        insert into load_comparison_table(uid, time, old_load, new_load) values(#{uid},#{time}, #{oldLoad}, #{newLoad})
     </insert>
 
     <delete id="del" parameterType="int">

@@ -15,6 +15,7 @@ import org.moeaframework.core.variable.EncodingUtils;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import com.example.charging.utils.Utils;
 
@@ -78,6 +79,7 @@ public class OrderlyCharging extends NormalCharging {
             double leavingTime = ev.getLeavingTime();
             double chargingTime = ev.getChargingTime();
             double endTime = ev.getChargingEndTime();
+            endTime = endTime > 24 ? (endTime - 24) : endTime;
             EVList.add(new double[]{maxSOC, remainingSOC, chargingPower, returningTime, leavingTime,
                     chargingTime, endTime});
         }
@@ -127,17 +129,16 @@ public class OrderlyCharging extends NormalCharging {
             totalLoad.add(new double[]{time, total});
         }
         this.setTimeToTotalLoad(totalLoad);
-//        return totalLoad;
-//        this.utils.writeToNewCSV(title, totalLoad,
-//                new String[]{"Time", "Total_Load"});
     }
 
     public List<LoadComparison> createLCList(List<double[]> oldTimeToTotalLoad,
-                                             List<double[]> newTimeToTotalLoad) {
+                                             List<double[]> newTimeToTotalLoad, String count, String timeStamp) {
         List<LoadComparison> lcList = new ArrayList<>();
+
+        String uid = "Simulation_" + count + "_" + timeStamp;
         for (int i = 0; i < oldTimeToTotalLoad.size(); i++) {
             LoadComparison lc = new LoadComparison();
-            lc.setId(String.valueOf(i));
+            lc.setUid(uid);
             BigDecimal time = BigDecimal.valueOf(oldTimeToTotalLoad.get(i)[0]).
                     setScale(2, RoundingMode.HALF_UP);
             BigDecimal oldLoad = BigDecimal.valueOf(oldTimeToTotalLoad.get(i)[1]).
@@ -152,20 +153,24 @@ public class OrderlyCharging extends NormalCharging {
         return lcList;
     }
 
-    public List<EVTimeComparison> createETCList(List<double[]> EVList, double[] solutions) {
+    public List<EVTimeComparison> createETCList(List<double[]> EVList, double[] solutions, String count,
+                                                String timeStamp) {
         List<EVTimeComparison> etcList = new ArrayList<>();
+        String uid = "Simulation_" + count + "_" + timeStamp;
 
         // params: maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime, endTime
         for (int i = 0; i < EVList.size(); i++) {
             EVTimeComparison etc = new EVTimeComparison();
-            etc.setId(String.valueOf(i));
+            etc.setUid(uid);
             BigDecimal oldStartTime = BigDecimal.valueOf(EVList.get(i)[3]).
                     setScale(2, RoundingMode.HALF_UP);
             BigDecimal oldEndTime = BigDecimal.valueOf(EVList.get(i)[6]).
                     setScale(2, RoundingMode.HALF_UP);
             BigDecimal newStartTime = BigDecimal.valueOf(solutions[i]).
                     setScale(2, RoundingMode.HALF_UP);
-            BigDecimal newEndTime = BigDecimal.valueOf(solutions[i] + EVList.get(i)[5]).
+            double endTime = solutions[i] + EVList.get(i)[5];
+            endTime = endTime > 24 ? (endTime - 24) : endTime;
+            BigDecimal newEndTime = BigDecimal.valueOf(endTime).
                     setScale(2, RoundingMode.HALF_UP);
             etc.setOldStartTime(oldStartTime);
             etc.setOldEndTime(oldEndTime);
@@ -263,11 +268,14 @@ public class OrderlyCharging extends NormalCharging {
         List<double[]> newTimeToTotalLoad = oc.getTimeToTotalLoad();
 
         // 将本次循环所得数据传入数据库
+        String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
         ExportData ed = new ExportData();
-//        List<LoadComparison> lcList = oc.createLCList(oldTimeToTotalLoad, newTimeToTotalLoad);
-//        ed.exportLoadComparison(lcList);
+        List<LoadComparison> lcList = oc.createLCList(oldTimeToTotalLoad, newTimeToTotalLoad,
+                "1", timeStamp);
+        ed.exportLoadComparison(lcList);
 
-        List<EVTimeComparison> etcList = oc.createETCList(oc.getEVList(), oc.getNewChargingStartTime());
+        List<EVTimeComparison> etcList = oc.createETCList(oc.getEVList(), oc.getNewChargingStartTime(),
+                "1", timeStamp);
         ed.exportEVTimeComparison(etcList);
 
         long endTime = System.nanoTime();

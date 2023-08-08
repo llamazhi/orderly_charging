@@ -28,7 +28,7 @@ public class ExportData {
     }
 
     public void startSession() throws IOException {
-        logger.info("Before");
+        logger.info("Start loading data to database ... ");
         //1.加载核心配置文件的字节输入流
         stream = Resources.getResourceAsStream("mybatis.xml");
         //2.创建SqlSessionFactory的构建对象--框架使用的是构建者模式
