@@ -8,16 +8,14 @@ import org.apache.logging.log4j.Logger;
 import org.moeaframework.core.*;
 import org.moeaframework.core.variable.EncodingUtils;
 import org.moeaframework.problem.AbstractProblem;
-import com.opencsv.*;
 
 import java.util.*;
-import java.io.FileReader;
 import java.io.IOException;
 import com.example.charging.utils.Utils;
 
 public class ChargingStrategy extends AbstractProblem {
-    private List<double[]> timeToParams;
-    private List<double[]> EVDataBase;
+    private List<String[]> timeToDailyLoad;
+    private List<EVData> EVDataBase;
 
     private int nTimeSlots;
     private int nEVs;
@@ -27,20 +25,19 @@ public class ChargingStrategy extends AbstractProblem {
 
     // decision variables 决策变量
     // 测试使用每辆车的起始充电时间和结束充电时间
-    public ChargingStrategy(List<double[]> timeToParams, List<double[]> EVDataBase, int NumEVs,
-                            int NumTimeSlots) throws IOException {
+    public ChargingStrategy(List<String[]> timeToDailyLoad, List<EVData> EVDataBase, int NumEVs,
+                            int NumTimeSlots) {
         super(NumEVs, 2, NumEVs + NumTimeSlots);
         this.setNEVs(NumEVs);
         this.setnTimeSlots(NumTimeSlots);
-        this.setTimeToParams(timeToParams);
+        this.setTimeToDailyLoad(timeToDailyLoad);
         this.setEVDataBase(EVDataBase);
         this.util = new Utils();
+//        logger.info("entered optimizer constructor");
     }
 
     @Override
     public void evaluate(Solution solution) {
-        List<double[]> timeToAllParams = this.getTimeToParams();
-        List<double[]> EVData = this.getEVDataBase();
         int timeNum = this.getNTimeSlots();
         double[] constraints = new double[this.getNEVs() + this.getNTimeSlots()];
 
@@ -51,40 +48,45 @@ public class ChargingStrategy extends AbstractProblem {
         double[] loadArray = new double[timeNum];
 
         for (int i = 0; i < timeNum; i++) {
-            double[] rowData = timeToAllParams.get(i); // "Time","Daily_Load"
-            double dailyLoad = rowData[1];
-            loadArray[i] = dailyLoad;
+            // "Time","Daily_Load"
+            loadArray[i] = Double.parseDouble(this.getTimeToDailyLoad().get(i)[1]);
         }
-
-        // 将随机生成的时间转换为0.25区间的标准时间
-        for (int i = 0; i < this.getNEVs(); i++) {
-            double converted = this.util.convertToProperTime(chargingStartingTime[i]);
-            if (converted == 24.0) {
-                converted = 0.0;
-            }
-            chargingStartingTime[i] = converted;
-        }
-
 
         // 计算新的Pev分布
-        // double chargeTime = (maxCharge * (1 - ev.getRemainingSOC() / 100)) / ev.getChargingPower();
         for (double t = 0; t < 24; t += 0.25) {
             double currPower = 0;
-            for (int i = 0; i < this.getNEVs(); i++) { // "Max_SOC, Remaining_SOC, Charging_Power","Returning_Time","Leaving_Time","Charging_Time"
-                double[] row = EVData.get(i);
-                double startTime = chargingStartingTime[(int) (t * 4)];
-                double leavingTime = row[4];
-                leavingTime += 24; // 表示第二天的时刻
+            for (int i = 0; i < this.getNEVs(); i++) {
+                // params: maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime, endTime
+                EVData ev = this.getEVDataBase().get(i);
+                double oldStartTime = ev.getReturningTime();
+                double newStartTime = chargingStartingTime[i];
+                double leavingTime = ev.getLeavingTime();
+                double newEndTime = this.util.convertTimeToNextDay(newStartTime + ev.getChargingTime());
 
-                if (t >= startTime && t <= leavingTime) {
-                    currPower += row[2];
+                if (this.util.timeIsInRange(t, newStartTime, newEndTime)) {
+                    currPower += ev.getChargingPower();
                 }
 
                 // 检查充电时间约束条件
-                double newEndTime = chargingStartingTime[(int) (t * 4)] + row[5];
-                double returningTime = row[3];
+                if ((newStartTime > 15 && newStartTime < 24 || newStartTime > 0 && newStartTime < 5)) {
+                    constraints[i] = 0.0;
+                } else {
+                    constraints[i] = oldStartTime - newStartTime;
+                }
 
-                if (newEndTime >= returningTime && newEndTime <= leavingTime) {
+                if ((newEndTime >= 0 && newEndTime <= 8) || (newEndTime >= 18 && newEndTime < 24)) {
+                    constraints[i] = 0.0;
+                } else {
+                    constraints[i] = leavingTime - newEndTime;
+                }
+
+                if (newStartTime - oldStartTime <= 6 && newStartTime - oldStartTime > 0) {
+                    constraints[i] = 0.0;
+                } else {
+                    constraints[i] = newStartTime - oldStartTime;
+                }
+
+                if (newEndTime < leavingTime) {
                     constraints[i] = 0.0;
                 } else {
                     constraints[i] = leavingTime - newEndTime;
@@ -128,8 +130,9 @@ public class ChargingStrategy extends AbstractProblem {
     public Solution newSolution() {
         Solution solution = new Solution(this.getNumberOfVariables(), this.getNumberOfObjectives(),
                 this.getNEVs() + this.getNTimeSlots());
+//        logger.info("curr NEV: " + this.getNEVs());
         for (int i = 0; i < this.getNEVs(); i++) {
-            solution.setVariable(i, EncodingUtils.newReal(0.0, 23.5));
+            solution.setVariable(i, EncodingUtils.newReal(0.0, 23.9));
         }
 
         return solution;
@@ -167,19 +170,19 @@ public class ChargingStrategy extends AbstractProblem {
         }
     }
 
-    public List<double[]> getTimeToParams() {
-        return timeToParams;
+    public List<String[]> getTimeToDailyLoad() {
+        return timeToDailyLoad;
     }
 
-    public void setTimeToParams(List<double[]> timeToParams) {
-        this.timeToParams = timeToParams;
+    public void setTimeToDailyLoad(List<String[]> timeToDailyLoad) {
+        this.timeToDailyLoad = timeToDailyLoad;
     }
 
-    public List<double[]> getEVDataBase() {
+    public List<EVData> getEVDataBase() {
         return EVDataBase;
     }
 
-    public void setEVDataBase(List<double[]> EVDataBase) {
+    public void setEVDataBase(List<EVData> EVDataBase) {
         this.EVDataBase = EVDataBase;
     }
 

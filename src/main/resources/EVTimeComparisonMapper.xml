@@ -13,8 +13,9 @@
     </select>
 
     <insert id="add" parameterType="com.example.charging.entity.EVTimeComparison">
-        insert into ev_time_comparison_table(uid, old_start_time, old_end_time, new_start_time, new_end_time)
-        values(#{uid},#{oldStartTime}, #{oldEndTime}, #{newStartTime}, #{newEndTime})
+        insert into ev_time_comparison_table(uid, evid, old_start_time, old_end_time, new_start_time, new_end_time,
+                                             leaving_time)
+        values(#{uid}, #{evid}, #{oldStartTime}, #{oldEndTime}, #{newStartTime}, #{newEndTime}, #{leavingTime})
     </insert>
 
     <delete id="del" parameterType="int">

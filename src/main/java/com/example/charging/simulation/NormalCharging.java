@@ -221,13 +221,13 @@ public class NormalCharging {
             ev.setRemainingSOC(lastSOC);
 
             int[] probBox = new int[]{0, 0, 0, 0, 1}; // 假设4/5的人会用慢充
-            int ifUseFastCharging = probBox[generator.nextInt(3)];
+            int ifUseFastCharging = probBox[generator.nextInt(5)];
+            ev.setUseFastCharging(ifUseFastCharging);
 
             // 生成随机返回时间
             maxProb = this.findMaxCumulativeProb(returningTime);
             prob = this.generator.nextDouble() * maxProb;
             double retTime = Double.parseDouble(this.findItemFromProb(returningTime, prob));
-//            logger.info("retTime: " + retTime);
             ev.setReturningTime(retTime);
 
             // 生成随机离开时间
@@ -238,11 +238,13 @@ public class NormalCharging {
 
             int[] EVparams = this.EVModelsData.get(ev.getModelName());
             double maxCharge = EVparams[2];
+            ev.setMaxSOC(maxCharge);
             ev.setChargingPower(EVparams[ifUseFastCharging]);
+//            ev.setChargingPower(EVparams[0]); // 假设全部用慢充
             double chargeTime = (maxCharge * (1 - ev.getRemainingSOC() / 100)) / ev.getChargingPower();
             ev.setChargingTime(chargeTime);
-
-            ev.setChargingEndTime((ev.getReturningTime() + ev.getChargingTime()));
+            double endTime = this.utils.convertTimeToNextDay(ev.getReturningTime() + ev.getChargingTime());
+            ev.setChargingEndTime(endTime);
             EVDatabase.add(ev);
         }
         return EVDatabase;
@@ -272,9 +274,8 @@ public class NormalCharging {
         for (double time = 0; time < 24; time += 0.25) {
             double currPower = 0;
             for (EVData ev : EVDatabase) {
-                if (time >= ev.getReturningTime() && time <= ev.getChargingEndTime()) {
-                    String modelName = ev.getModelName();
-                    currPower += this.EVModelsData.get(modelName)[ev.getUseFastCharging()];
+                if (this.utils.timeIsInRange(time, ev.getReturningTime(), ev.getChargingEndTime())) {
+                    currPower += ev.getChargingPower();
                 }
             }
             timeToPower.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
@@ -304,7 +305,6 @@ public class NormalCharging {
         for (int i = 0; i < loop; i++) {
             List<String[]> timeToPower = this.simulateMonteCarlo();
             for (int j = 0; j < powerAvg.length; j++) {
-//                double power = Double.parseDouble(timeToPower.get(j)[1]);
                 powerAvg[j] += Double.parseDouble(timeToPower.get(j)[1]);
             }
         }

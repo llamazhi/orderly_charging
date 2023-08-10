@@ -15,6 +15,7 @@ import org.moeaframework.core.variable.EncodingUtils;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.example.charging.utils.Utils;
@@ -27,10 +28,11 @@ public class OrderlyCharging extends NormalCharging {
     private List<String[]> timeToDailyLoad;
     private List<String[]> timeToChargingLoad;
     private List<double[]> timeToTotalLoad;
-    private List<double[]> timeToLoadList;
+//    private List<double[]> timeToLoadList;
     private List<double[]> EVList;
     private double[] newChargingStartTime;
     private int EVNum;
+    private int maxEvaluation;
     private static final int TIME_NUMS = 96; // 24h/day, in every 15 min
 
     // initialize with EV specs
@@ -43,80 +45,45 @@ public class OrderlyCharging extends NormalCharging {
         this.setTotalVehicleNumber(400);
         this.utils = new Utils();
         this.EVDatabase = new ArrayList<>();
+        this.timeToChargingLoad = new ArrayList<>();
     }
 
     // 返回： 模拟所得用电负荷参数
-    public void setTimeToLoadList(List<String[]> timeToDailyLoad, List<String[]> timeToAvgChargingLoad) {
+    public void setTimeLoadList(List<String[]> timeToDailyLoad, List<String[]> timeToAvgChargingLoad) {
         // 将所有参数统一放到一个表内
-        List<double[]> timeToDaily = new ArrayList<>();
-        for (int i = 0; i < 96; i++) {
-            String time = timeToAvgChargingLoad.get(i)[0];
-            String dailyLoad = timeToDailyLoad.get(i)[1];
-            String avgChargingLoad = timeToAvgChargingLoad.get(i)[1];
-//            String[] params = new String[]{time, dailyLoad, avgChargingLoad};
-            double[] params = new double[]{Double.parseDouble(time), Double.parseDouble(dailyLoad),
-            Double.parseDouble(avgChargingLoad)};
-            timeToDaily.add(params);
-        }
         this.setTimeToDailyLoad(timeToDailyLoad);
         this.setTimeToChargingLoad(timeToAvgChargingLoad);
-        this.setTimeToLoadList(timeToDaily);
-//        return timeToDaily;
     }
 
-    // 返回： 模拟所得电动汽车参数
-    public void setEVDataList(List<EVData> data) {
-        this.setEVDatabase(this.simulateEVDatabase());
-        this.setEVNum(this.getEVDatabase().size());
-        List<double[]> EVList = new ArrayList<>();
-
-        // params: maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime, endTime
-        for (EVData ev : data) {
-            double maxSOC = ev.getMaxSOC();
-            double remainingSOC = ev.getRemainingSOC();
-            double chargingPower = ev.getChargingPower();
-            double returningTime = ev.getReturningTime();
-            double leavingTime = ev.getLeavingTime();
-            double chargingTime = ev.getChargingTime();
-            double endTime = ev.getChargingEndTime();
-            endTime = endTime > 24 ? (endTime - 24) : endTime;
-            EVList.add(new double[]{maxSOC, remainingSOC, chargingPower, returningTime, leavingTime,
-                    chargingTime, endTime});
-        }
-        this.setEVList(EVList);
-//        return EVList;
-    }
-
-    public List<String[]> updateOptimizedSolution() {
+    public void updateOptimizedSolution() {
         NondominatedPopulation result = new Executor()
-                .withProblemClass(ChargingStrategy.class, this.getTimeToLoadList(),
-                        this.getEVList(), this.getEVNum(), TIME_NUMS)
+                .withProblemClass(ChargingStrategy.class, this.getTimeToDailyLoad(),
+                        this.getEVDatabase(), this.getEVNum(), TIME_NUMS)
                 .withAlgorithm("OMOPSO")
-                .withMaxEvaluations(100000)
+                .withMaxEvaluations(this.getMaxEvaluation())
                 .distributeOnAllCores()
                 .run();
 
         // 所得solutions是优化过的电动汽车开始充电时间分布
         Solution solution = result.get(0);
-        double[] solutions = EncodingUtils.getReal(solution);
-        this.setNewChargingStartTime(solutions);
+        double[] newStartTime = EncodingUtils.getReal(solution);
+        this.setNewChargingStartTime(newStartTime);
 
-        this.timeToChargingLoad = new ArrayList<>();
+        // 计算新的每个时刻对应的充电负荷
+        List<String[]> temp = new ArrayList<>();
         for (double time = 0; time < 24; time += 0.25) {
             double currPower = 0;
             for (int j = 0; j < this.EVDatabase.size(); j++) {
                 EVData ev = this.EVDatabase.get(j);
-                double newEndTime = solutions[j] + ev.getChargingTime();
-                if (newEndTime > 24) {
-                    newEndTime -= 24;
-                }
-                if (time >= solutions[j] && time <= newEndTime) {
+                double newEndTime = newStartTime[j] + ev.getChargingTime();
+                newEndTime = this.utils.convertTimeToNextDay(newEndTime);
+                if (this.utils.timeIsInRange(time, newStartTime[j], newEndTime)) {
                     currPower += ev.getChargingPower();
                 }
             }
-            this.timeToChargingLoad.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
+            temp.add(new String[]{String.valueOf(time), String.valueOf(currPower)});
         }
-        return this.timeToChargingLoad;
+        this.setTimeToChargingLoad(temp);
     }
 
     public void setTimeToTotalLoad() {
@@ -153,29 +120,30 @@ public class OrderlyCharging extends NormalCharging {
         return lcList;
     }
 
-    public List<EVTimeComparison> createETCList(List<double[]> EVList, double[] solutions, String count,
+    public List<EVTimeComparison> createETCList(double[] solutions, String count,
                                                 String timeStamp) {
         List<EVTimeComparison> etcList = new ArrayList<>();
         String uid = "Simulation_" + count + "_" + timeStamp;
 
         // params: maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime, endTime
-        for (int i = 0; i < EVList.size(); i++) {
+        for (int i = 0; i < this.getEVDatabase().size(); i++) {
+            EVData ev = this.getEVDatabase().get(i);
             EVTimeComparison etc = new EVTimeComparison();
             etc.setUid(uid);
-            BigDecimal oldStartTime = BigDecimal.valueOf(EVList.get(i)[3]).
-                    setScale(2, RoundingMode.HALF_UP);
-            BigDecimal oldEndTime = BigDecimal.valueOf(EVList.get(i)[6]).
-                    setScale(2, RoundingMode.HALF_UP);
-            BigDecimal newStartTime = BigDecimal.valueOf(solutions[i]).
-                    setScale(2, RoundingMode.HALF_UP);
-            double endTime = solutions[i] + EVList.get(i)[5];
+            etc.setEvid("EV_" + i);
+            Time oldStartTime = this.utils.convertHoursToExactTime(ev.getReturningTime());
+            Time oldEndTime = this.utils.convertHoursToExactTime(ev.getChargingEndTime());
+            Time newStartTime = this.utils.convertHoursToExactTime(solutions[i]);
+            double endTime = solutions[i] + ev.getChargingTime();
             endTime = endTime > 24 ? (endTime - 24) : endTime;
-            BigDecimal newEndTime = BigDecimal.valueOf(endTime).
-                    setScale(2, RoundingMode.HALF_UP);
+            Time newEndTime = this.utils.convertHoursToExactTime(endTime);
+            Time leavingTime = this.utils.convertHoursToExactTime(ev.getLeavingTime());
+
             etc.setOldStartTime(oldStartTime);
             etc.setOldEndTime(oldEndTime);
             etc.setNewStartTime(newStartTime);
             etc.setNewEndTime(newEndTime);
+            etc.setLeavingTime(leavingTime);
             etcList.add(etc);
         }
         return etcList;
@@ -213,22 +181,6 @@ public class OrderlyCharging extends NormalCharging {
         this.timeToTotalLoad = timeToTotalLoad;
     }
 
-    public List<double[]> getTimeToLoadList() {
-        return timeToLoadList;
-    }
-
-    public void setTimeToLoadList(List<double[]> timeToLoadList) {
-        this.timeToLoadList = timeToLoadList;
-    }
-
-    public List<double[]> getEVList() {
-        return EVList;
-    }
-
-    public void setEVList(List<double[]> EVList) {
-        this.EVList = EVList;
-    }
-
     public int getEVNum() {
         return EVNum;
     }
@@ -245,37 +197,62 @@ public class OrderlyCharging extends NormalCharging {
         this.newChargingStartTime = newChargingStartTime;
     }
 
+    public int getMaxEvaluation() {
+        return maxEvaluation;
+    }
+
+    public void setMaxEvaluation(int maxEvaluation) {
+        this.maxEvaluation = maxEvaluation;
+    }
+
+    public double calculateTotalChargingLoad(List<String[]> chargingLoad) {
+        double sum = 0;
+        for (String[] s : chargingLoad) {
+            sum += Double.parseDouble(s[1]);
+        }
+        return sum;
+    }
+
     public static void main(String[] args) throws IOException {
         long startTime = System.nanoTime();
         OrderlyCharging oc = new OrderlyCharging();
         int loop = 10;
+
         // 模拟生成必要参数
         List<String[]> timeToAvgChargingPower = oc.multipleSimulateMCM(loop);
-        List<String[]> timeToDailyLoad = oc.simulateResidentialDailyPowerLoad();
-        oc.setEVDatabase(oc.simulateEVDatabase());
+//        List<String[]> timeToAvgChargingPower = oc.simulateMonteCarlo();
 
-        // 整合打包参数传入优化算法
-        oc.setEVDataList(oc.getEVDatabase());
-        oc.setTimeToLoadList(timeToDailyLoad, timeToAvgChargingPower);
+        List<String[]> timeToDailyLoad = oc.simulateResidentialDailyPowerLoad();
+        oc.setTimeLoadList(timeToDailyLoad, timeToAvgChargingPower);
+        oc.setEVDatabase(oc.simulateEVDatabase());
+        oc.setEVNum(oc.getEVDatabase().size());
+
+        // 记录总负荷
         oc.setTimeToTotalLoad();
         List<double[]> oldTimeToTotalLoad = oc.getTimeToTotalLoad();
 
-        // 优化算法更新汽车充电时间
-        List<String[]> newTimeToChargingLoad = oc.updateOptimizedSolution();
-        oc.setTimeToChargingLoad(newTimeToChargingLoad);
+        // debug
+//        double oldTotalCharge = oc.calculateTotalChargingLoad(oc.getTimeToChargingLoad());
+//        logger.info("old total charging load: " + oldTotalCharge);
 
+        // 优化算法更新汽车充电时间
+        oc.setMaxEvaluation(100000);
+        oc.updateOptimizedSolution();
         oc.setTimeToTotalLoad();
         List<double[]> newTimeToTotalLoad = oc.getTimeToTotalLoad();
+
+//        double newTotalCharge = oc.calculateTotalChargingLoad(oc.getTimeToChargingLoad());
+//        logger.info("new total charging load: " + newTotalCharge);
 
         // 将本次循环所得数据传入数据库
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
         ExportData ed = new ExportData();
         List<LoadComparison> lcList = oc.createLCList(oldTimeToTotalLoad, newTimeToTotalLoad,
-                "1", timeStamp);
+                "2", timeStamp);
         ed.exportLoadComparison(lcList);
 
-        List<EVTimeComparison> etcList = oc.createETCList(oc.getEVList(), oc.getNewChargingStartTime(),
-                "1", timeStamp);
+        List<EVTimeComparison> etcList = oc.createETCList(oc.getNewChargingStartTime(),
+                "2", timeStamp);
         ed.exportEVTimeComparison(etcList);
 
         long endTime = System.nanoTime();

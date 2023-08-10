@@ -1,13 +1,17 @@
 package com.example.charging.entity;
 
 import java.math.BigDecimal;
+import java.sql.Time;
 
 public class EVTimeComparison {
     private String uid;
-    private BigDecimal oldStartTime;
-    private BigDecimal oldEndTime;
-    private BigDecimal newStartTime;
-    private BigDecimal newEndTime;
+    private String evid;
+    private Time oldStartTime;
+    private Time oldEndTime;
+    private Time newStartTime;
+    private Time newEndTime;
+
+    private Time leavingTime;
 
     public String getUid() {
         return uid;
@@ -17,39 +21,53 @@ public class EVTimeComparison {
         this.uid = uid;
     }
 
-    public BigDecimal getOldStartTime() {
+    public Time getOldStartTime() {
         return oldStartTime;
     }
 
-    public void setOldStartTime(BigDecimal oldStartTime) {
+    public String getEvid() {
+        return evid;
+    }
+
+    public void setEvid(String evid) {
+        this.evid = evid;
+    }
+
+    public void setOldStartTime(Time oldStartTime) {
         this.oldStartTime = oldStartTime;
     }
 
-    public BigDecimal getOldEndTime() {
+    public Time getOldEndTime() {
         return oldEndTime;
     }
 
-    public void setOldEndTime(BigDecimal oldEndTime) {
+    public void setOldEndTime(Time oldEndTime) {
         this.oldEndTime = oldEndTime;
     }
 
-    public BigDecimal getNewStartTime() {
+    public Time getNewStartTime() {
         return newStartTime;
     }
 
-    public void setNewStartTime(BigDecimal newStartTime) {
+    public void setNewStartTime(Time newStartTime) {
         this.newStartTime = newStartTime;
     }
 
-    public BigDecimal getNewEndTime() {
+    public Time getNewEndTime() {
         return newEndTime;
     }
 
-    public void setNewEndTime(BigDecimal newEndTime) {
+    public void setNewEndTime(Time newEndTime) {
         this.newEndTime = newEndTime;
     }
 
+    public Time getLeavingTime() {
+        return leavingTime;
+    }
 
+    public void setLeavingTime(Time leavingTime) {
+        this.leavingTime = leavingTime;
+    }
 
     @Override
     public String toString() {
