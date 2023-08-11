@@ -1,5 +1,6 @@
 package com.example.charging.simulation;
 
+// 此类存有一辆新能源车辆的电池信息以及返回及离开时间
 public class EVData {
     private double remainingSOC;
     private double returningTime;

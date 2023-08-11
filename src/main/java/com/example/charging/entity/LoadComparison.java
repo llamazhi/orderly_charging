@@ -2,6 +2,7 @@ package com.example.charging.entity;
 
 import java.math.BigDecimal;
 
+// 此类存有一天内优化前后用电负荷对比
 public class LoadComparison {
     private String uid;
     private BigDecimal time;

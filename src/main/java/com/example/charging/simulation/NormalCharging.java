@@ -15,7 +15,7 @@ public class NormalCharging {
     private static final Logger logger = LogManager.getLogger(NormalCharging.class);
     private Map<String, int[]> EVModelsData;
     private String[] EVModels;
-    private Random generator = new Random();
+    private final Random generator = new Random();
     private double marketPermeability;
     private int totalVehicleNumber;
     private final Utils utils;
@@ -337,51 +337,12 @@ public class NormalCharging {
         this.totalVehicleNumber = totalVehicleNumber;
     }
 
-    public static void main(String[] args) throws IOException {
-        long startTime = System.nanoTime();
-        NormalCharging nc = new NormalCharging();
-//        List<String[]> travelDistanceData = nc.simulateDailyTravelDistance();
-//        writeToNewCSV("./src/data/dailyTravelDistances.csv", travelDistanceData,
-//                new String[]{"Distance", "Distribution"});
-//        logger.info("Daily travel distance data has been written");
-//        logger.info("日里程数据已被导出");
-////
-//        List<String[]> SOCDistributionData = nc.simulateSOCDistribution(travelDistanceData);
-//        writeToNewCSV("./src/data/lastSOCDistribution.csv", SOCDistributionData,
-//                new String[]{"SOC", "Probability"});
-//        logger.info("SOC distribution data has been written");
-//        logger.info("SOC 分布数据已被导出");
+//    public static void main(String[] args) throws IOException {
+//        long startTime = System.nanoTime();
+//        NormalCharging nc = new NormalCharging();
 //
-//        List<String[]> returningTimeData = nc.simulateReturningTime();
-//        writeToNewCSV("./src/data/returningTimeDistribution.csv", returningTimeData,
-//                new String[]{"Time", "Probability"});
-//        logger.info("Returning time distribution data has been written");
-//        logger.info("车辆返回时刻分布数据已被导出");
-
-//        List<String[]> leavingTimeData = nc.simulateLeavingTime();
-//        writeToNewCSV("./src/data/leavingTimeDistribution.csv", leavingTimeData,
-//                new String[]{"Time", "Probability"});
-//        logger.info("Leaving time distribution data has been written");
-//        logger.info("车辆出发时刻分布数据已被导出");
-
-        int loop = 1000;
-        List<String[]> avgTimeToPower = nc.multipleSimulateMCM(loop);
-
-        // 计算负荷峰谷差以及负荷峰谷差率
-        List<String[]> dailyLoad = nc.simulateResidentialDailyPowerLoad();
-        double peakValleyDifferenceRate = nc.calculatePeakValleyRate(avgTimeToPower, dailyLoad);
-        double permeability = nc.marketPermeability * 100;
-        logger.info("在渗透率为 " + permeability + "% 的情况下， 峰谷差率为 " + peakValleyDifferenceRate + "% ");
-
-//        writeToNewCSV("./src/data/timeSlotWithPower.csv", timeToPower, new String[]{"Time", "Power"});
-//        logger.info("Time slots with power usage data has been written");
-//        logger.info("时间格与其对应电力负荷数据已被导出");
-
-//        writeToNewCSV("./src/data/averageTimeSlotWithPower.csv", avgTimeToPower, new String[]{"Time", "Power"});
-//        logger.info("Average time slots with power usage data has been written");
-//        logger.info("平均时间格与其对应电力负荷数据已被导出");
-        long endTime = System.nanoTime();
-        long totalTime = (endTime - startTime) / 1000000;
-        logger.info("Total execution time: " + totalTime + " ms");
-    }
+//        long endTime = System.nanoTime();
+//        long totalTime = (endTime - startTime) / 1000000;
+//        logger.info("Total execution time: " + totalTime + " ms");
+//    }
 }

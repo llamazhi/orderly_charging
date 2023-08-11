@@ -12,7 +12,6 @@ import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import com.example.charging.entity.EVTimeComparison;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,7 +23,6 @@ public class ExportData {
     static SqlSession sqlSession= null;
 
     public void ExportData() throws IOException {
-//        this.startSession();
     }
 
     public void startSession() throws IOException {
@@ -62,19 +60,4 @@ public class ExportData {
         }
         this.closeSession();
     }
-
-    // 将模拟生成的EVTimeComparison List读入表格
-//    public void exportEVTimeComparison(List<EVTimeComparison> data) throws IOException {
-//        //5.通过SqlSession对象获取接口对应的代理对象
-//        EVTimeComparisonMapper EVTimeMapper = sqlSession.getMapper(EVTimeComparisonMapper.class);
-//        for (EVTimeComparison item : data) {
-//            EVTimeMapper.add(item);
-//        }
-//
-////        UserTestMapper mapper = sqlSession.getMapper(UserTestMapper.class);
-////        mapper.add(new UserEntity(4, "李666"));
-////        List<UserEntity> userEntities = mapper.selectAll();
-////        System.out.println(userEntities);
-//        this.closeSession();
-//    }
 }

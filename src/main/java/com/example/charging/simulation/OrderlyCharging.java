@@ -28,8 +28,6 @@ public class OrderlyCharging extends NormalCharging {
     private List<String[]> timeToDailyLoad;
     private List<String[]> timeToChargingLoad;
     private List<double[]> timeToTotalLoad;
-//    private List<double[]> timeToLoadList;
-    private List<double[]> EVList;
     private double[] newChargingStartTime;
     private int EVNum;
     private int maxEvaluation;
@@ -220,7 +218,6 @@ public class OrderlyCharging extends NormalCharging {
 
         // 模拟生成必要参数
         List<String[]> timeToAvgChargingPower = oc.multipleSimulateMCM(loop);
-//        List<String[]> timeToAvgChargingPower = oc.simulateMonteCarlo();
 
         List<String[]> timeToDailyLoad = oc.simulateResidentialDailyPowerLoad();
         oc.setTimeLoadList(timeToDailyLoad, timeToAvgChargingPower);
@@ -231,18 +228,11 @@ public class OrderlyCharging extends NormalCharging {
         oc.setTimeToTotalLoad();
         List<double[]> oldTimeToTotalLoad = oc.getTimeToTotalLoad();
 
-        // debug
-//        double oldTotalCharge = oc.calculateTotalChargingLoad(oc.getTimeToChargingLoad());
-//        logger.info("old total charging load: " + oldTotalCharge);
-
         // 优化算法更新汽车充电时间
         oc.setMaxEvaluation(100000);
         oc.updateOptimizedSolution();
         oc.setTimeToTotalLoad();
         List<double[]> newTimeToTotalLoad = oc.getTimeToTotalLoad();
-
-//        double newTotalCharge = oc.calculateTotalChargingLoad(oc.getTimeToChargingLoad());
-//        logger.info("new total charging load: " + newTotalCharge);
 
         // 将本次循环所得数据传入数据库
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());

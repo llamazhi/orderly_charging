@@ -4,13 +4,12 @@ import com.opencsv.*;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Time;
 import java.util.*;
 
 import org.apache.commons.math3.util.Precision;
 
+// 此类包含用于此项目的各种helper function
 public class Utils {
     public Utils() {
     }
@@ -58,6 +57,7 @@ public class Utils {
         }
     }
 
+    // 将输入的24小时制时间值转换为 "HH:mm:ss" 的时间格式
     public Time convertHoursToExactTime(double timeValue) {
         // Extracting hours, minutes, and seconds
         int hours = (int) timeValue;
@@ -70,11 +70,4 @@ public class Utils {
         // Creating a Time object
         return Time.valueOf(hourStr + ":" + minStr + ":" + secStr);
     }
-
-
-
-//    public static void main(String[] args) {
-//        Utils utils = new Utils();
-//        System.out.println(utils.convertHoursToExactTime(23.34));
-//    }
 }

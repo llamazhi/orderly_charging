@@ -1,7 +1,5 @@
 package com.example.charging.mapper;
 import com.example.charging.entity.EVTimeComparison;
-import com.example.charging.entity.UserEntity;
-import com.example.charging.simulation.EVData;
 
 import java.util.List;
 

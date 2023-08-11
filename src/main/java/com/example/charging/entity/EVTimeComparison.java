@@ -1,8 +1,7 @@
 package com.example.charging.entity;
-
-import java.math.BigDecimal;
 import java.sql.Time;
 
+// 此类存有一辆电动汽车的返回与离开时间信息
 public class EVTimeComparison {
     private String uid;
     private String evid;

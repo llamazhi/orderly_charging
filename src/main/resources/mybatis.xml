@@ -21,8 +21,6 @@
     </environments>
     <!--加载mapper配置文件-->
     <mappers>
-        <mapper resource="UserTestMapper.xml" />
-        <mapper resource="DailyTravelDistanceMapper.xml" />
         <mapper resource="EVTimeComparisonMapper.xml" />
         <mapper resource="LoadComparisonMapper.xml" />
     </mappers>
