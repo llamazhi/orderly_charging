@@ -46,9 +46,9 @@ public class OrderlyChargingServer {
         this.timeToChargingLoad = new ArrayList<>();
         this.timeToTotalLoad = new ArrayList<>();
         this.timeToDailyLoad = this.utils.simulateResidentialDailyPowerLoad();
+        this.timeToTotalLoad = this.timeToDailyLoad;
         for (double i = 0; i < 24; i+=0.25) {
             this.timeToChargingLoad.add(new double[]{i, 0});
-            this.timeToTotalLoad.add(new double[]{i, 0});
         }
     }
 
@@ -110,13 +110,15 @@ public class OrderlyChargingServer {
             double daily = this.timeToDailyLoad.get(i)[1];
             double charging = this.timeToChargingLoad.get(i)[1];
             double total = daily + charging;
+//            logger.info("prevTotalLoad: " + this.timeToTotalLoad.get(i)[1]);
             this.timeToTotalLoad.set(i, new double[]{time, total});
+//            logger.info("newTotalLoad: " + this.timeToTotalLoad.get(i)[1]);
         }
     }
 
     public void updateDatabase() throws IOException {
         // 记录总负荷
-        List<double[]> oldTimeToTotalLoad = this.getTimeToTotalLoad();
+        List<double[]> oldTimeToTotalLoad = new ArrayList<>(this.getTimeToTotalLoad()); // shallow copy
 
         // 优化算法更新汽车充电时间
         this.setMaxEvaluation(100000);
@@ -132,7 +134,6 @@ public class OrderlyChargingServer {
                 "3", timeStamp);
         ed.exportLoadComparison(lcList);
 
-//        logger.info("EV List size: " + this.getEVList().size());
         List<EVTimeComparison> etcList = ed.createETCList(newStartingTime, this.getNewEVs(),
                 "3", timeStamp);
         ed.exportEVTimeComparison(etcList);
