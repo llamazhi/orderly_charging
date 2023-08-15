@@ -4,8 +4,11 @@ package com.example.charging.simulation;/* This class aims to simulate how an or
  *  同时，我们将从 com.example.charging.simulation.NormalCharging 继承共有的参数
  */
 
+import com.example.charging.database.ExportData;
+import com.example.charging.entity.EVData;
 import com.example.charging.entity.EVTimeComparison;
 import com.example.charging.entity.LoadComparison;
+import com.example.charging.optimizer.ChargingStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.moeaframework.Executor;
@@ -13,9 +16,6 @@ import org.moeaframework.core.*;
 import org.moeaframework.core.variable.EncodingUtils;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import com.example.charging.utils.Utils;
@@ -95,58 +95,6 @@ public class OrderlyCharging extends NormalCharging {
         }
         this.setTimeToTotalLoad(totalLoad);
     }
-
-    public List<LoadComparison> createLCList(List<double[]> oldTimeToTotalLoad,
-                                             List<double[]> newTimeToTotalLoad, String count, String timeStamp) {
-        List<LoadComparison> lcList = new ArrayList<>();
-
-        String uid = "Simulation_" + count + "_" + timeStamp;
-        for (int i = 0; i < oldTimeToTotalLoad.size(); i++) {
-            LoadComparison lc = new LoadComparison();
-            lc.setUid(uid);
-            BigDecimal time = BigDecimal.valueOf(oldTimeToTotalLoad.get(i)[0]).
-                    setScale(2, RoundingMode.HALF_UP);
-            BigDecimal oldLoad = BigDecimal.valueOf(oldTimeToTotalLoad.get(i)[1]).
-                    setScale(2, RoundingMode.HALF_UP);
-            BigDecimal newLoad = BigDecimal.valueOf(newTimeToTotalLoad.get(i)[1]).
-                    setScale(2, RoundingMode.HALF_UP);
-            lc.setTime(time);
-            lc.setOldLoad(oldLoad);
-            lc.setNewLoad(newLoad);
-            lcList.add(lc);
-        }
-        return lcList;
-    }
-
-    public List<EVTimeComparison> createETCList(double[] solutions, String count,
-                                                String timeStamp) {
-        List<EVTimeComparison> etcList = new ArrayList<>();
-        String uid = "Simulation_" + count + "_" + timeStamp;
-
-        // params: maxSOC, remainingSOC, chargingPower, returningTime, leavingTime, chargingTime, endTime
-        for (int i = 0; i < this.getEVDatabase().size(); i++) {
-            EVData ev = this.getEVDatabase().get(i);
-            EVTimeComparison etc = new EVTimeComparison();
-            etc.setUid(uid);
-            etc.setEvid("EV_" + i);
-            Time oldStartTime = this.utils.convertHoursToExactTime(ev.getReturningTime());
-            Time oldEndTime = this.utils.convertHoursToExactTime(ev.getChargingEndTime());
-            Time newStartTime = this.utils.convertHoursToExactTime(solutions[i]);
-            double endTime = solutions[i] + ev.getChargingTime();
-            endTime = endTime > 24 ? (endTime - 24) : endTime;
-            Time newEndTime = this.utils.convertHoursToExactTime(endTime);
-            Time leavingTime = this.utils.convertHoursToExactTime(ev.getLeavingTime());
-
-            etc.setOldStartTime(oldStartTime);
-            etc.setOldEndTime(oldEndTime);
-            etc.setNewStartTime(newStartTime);
-            etc.setNewEndTime(newEndTime);
-            etc.setLeavingTime(leavingTime);
-            etcList.add(etc);
-        }
-        return etcList;
-    }
-
     public List<EVData> getEVDatabase() {
         return EVDatabase;
     }
@@ -237,11 +185,11 @@ public class OrderlyCharging extends NormalCharging {
         // 将本次循环所得数据传入数据库
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
         ExportData ed = new ExportData();
-        List<LoadComparison> lcList = oc.createLCList(oldTimeToTotalLoad, newTimeToTotalLoad,
+        List<LoadComparison> lcList = ed.createLCList(oldTimeToTotalLoad, newTimeToTotalLoad,
                 "2", timeStamp);
         ed.exportLoadComparison(lcList);
 
-        List<EVTimeComparison> etcList = oc.createETCList(oc.getNewChargingStartTime(),
+        List<EVTimeComparison> etcList = ed.createETCList(oc.getNewChargingStartTime(), oc.getEVDatabase(),
                 "2", timeStamp);
         ed.exportEVTimeComparison(etcList);
 

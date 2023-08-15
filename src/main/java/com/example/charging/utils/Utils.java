@@ -36,6 +36,7 @@ public class Utils {
         return String.valueOf(Precision.round(n, 3));
     }
 
+
     // 返回：离输入数字最近的区间
     public double convertToProperTime(double t) {
         double interval = 0.25;
@@ -69,5 +70,20 @@ public class Utils {
 
         // Creating a Time object
         return Time.valueOf(hourStr + ":" + minStr + ":" + secStr);
+    }
+
+    public List<double[]> simulateResidentialDailyPowerLoad() {
+        List<double[]> res = new ArrayList<>();
+
+        for (double i = 0; i <= 15; i += 0.25) {
+            double power = 120 * Math.cos(0.47 * i) + 640;
+            res.add(new double[]{i, Precision.round(power, 3)});
+        }
+
+        for (double i = 15.25; i < 24; i += 0.25) {
+            double power = 80 * Math.sin(0.385 * i) + 766;
+            res.add(new double[]{i, Precision.round(power, 3)});
+        }
+        return res;
     }
 }

@@ -2,11 +2,10 @@ package com.example.charging.simulation;/* This class aims to simulate how a nor
  * power load capacity
  * 此 Class 致力于模拟无序充电如何影响一个居民小区的电力负荷 */
 
+import com.example.charging.entity.EVData;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
 
 import java.util.*;
 import com.example.charging.utils.Utils;
